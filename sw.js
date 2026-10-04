@@ -1,5 +1,5 @@
 /* DL Foresta – service worker: app e librerie in cache, tile della mappa in cache mentre le guardi */
-const CACHE = 'dl-foresta-v1.0.0';
+const CACHE = 'dl-foresta-v1.0.1';
 const TILES = 'dl-tiles';
 const CDN = 'https://cdn.jsdelivr.net/npm/';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './DLForesta.qgz'];

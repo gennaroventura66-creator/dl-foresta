@@ -186,7 +186,7 @@ table.pl tr{cursor:pointer}
    DL Foresta — dati: specie, cubatura INFC, norme regionali, codici della direzione lavori
    Tutto modificabile nell'app (Altro → Specie e tavole, Norme).
    ============================================================ */
-const APP_VER = '1.0.0';
+const APP_VER = '1.0.1';
 const APP_NAME = 'DL Foresta';
 
 /* Equazioni INFC 2005 (Tabacchi et al., 2011): volume fusto e rami grossi v [dm³] = b1 + b2·d²·h (+ b3·d);
@@ -1124,7 +1124,7 @@ Object.assign(A, {
    Piante tagliate senza contrassegno e danni al suolo registrati a parte.
    ============================================================ */
 const plOf = id => S.piante.find(p => p.id === id);
-const plLabel = x => `n. ${x.n ?? '—'} ${x.sp} ${spName(x.sp)}`.trim();
+const plLabel = x => `${x.segno === 'X' ? 'X (senza numero)' : 'n. ' + (x.n ?? '—')} ${x.sp} ${spName(x.sp)}`.trim();
 const dcAtteso = (l, x) => { const V = {min: num((l.dck || {}).min) || DC_K.min, max: num((l.dck || {}).max) || DC_K.max}; const d = num(x.d); return d ? [d * V.min, d * V.max] : null; };
 const dcAnom = (l, x) => { const r = dcAtteso(l, x); const dc = num(x.dc); return !!(r && dc && (dc < r[0] || dc > r[1])); };
 function spOrder() {
@@ -1165,7 +1165,7 @@ VIEWS.verifica = () => {
   if (LS.get('dl-gps', false)) treeGpsStart();
 };
 function plList(list, cur) {
-  return `<div class="list">${list.slice(0, 60).map(p => `<div class="it ${cur && p.id === cur.id ? 'on' : ''}" onclick="VR.sel('${p.id}')"><div class="b"><b>${p.dest === 'X' ? '✕' : 'n. ' + esc(p.n)}</b> ${esc(p.sp)} <span class="muted">${esc(spName(p.sp))}${num(p.d) ? ' · d ' + fmt(num(p.d), 0) : ''}${num(p.dc) ? ' · ceppaia ' + fmt(num(p.dc), 0) : ''}${p.dest === 'M' ? ' · matricina' : p.dest === 'R' ? ' · confine' : ''}${danniPl(p.id).length ? ' · ' + danniPl(p.id).length + ' danni' : ''}</span></div>${verPill(p)}</div>`).join('') || '<p class="muted">Nessuna pianta in questo elenco.</p>'}${list.length > 60 ? `<p class="muted">… altre ${list.length - 60} piante: cerca per numero.</p>` : ''}</div>`;
+  return `<div class="list">${list.slice(0, 60).map(p => `<div class="it ${cur && p.id === cur.id ? 'on' : ''}" onclick="VR.sel('${p.id}')"><div class="b"><b>${p.dest === 'X' ? '✕' : p.segno === 'X' ? 'X' : 'n. ' + esc(p.n)}</b> ${esc(p.sp)} <span class="muted">${esc(spName(p.sp))}${num(p.d) ? ' · d ' + fmt(num(p.d), 0) : ''}${num(p.dc) ? ' · ceppaia ' + fmt(num(p.dc), 0) : ''}${p.dest === 'M' ? ' · matricina' : p.dest === 'R' ? ' · confine' : ''}${danniPl(p.id).length ? ' · ' + danniPl(p.id).length + ' danni' : ''}</span></div>${verPill(p)}</div>`).join('') || '<p class="muted">Nessuna pianta in questo elenco.</p>'}${list.length > 60 ? `<p class="muted">… altre ${list.length - 60} piante: cerca per numero.</p>` : ''}</div>`;
 }
 /* scheda della pianta selezionata */
 function plCard(l, x) {
@@ -1786,13 +1786,13 @@ async function readRifLayers(db, p) {
    ============================================================ */
 const LOT_F = ['sez', 'nome', 'regione', 'comune', 'localita', 'proprieta', 'particella', 'catasto', 'governo', 'intervento', 'eta', 'turno', 'sp_prev', 'sup', 'pend', 'amp', 'dmin', 'dl', 'progettista', 'impresa', 'capocant', 'autoriz', 'data_aut', 'data_inizio', 'data_ult', 'data_fine', 'martello', 'matr_presc', 'hcepp', 'prescr', 'esito', 'concl'];
 const LOT_NUM = ['eta', 'turno', 'sup', 'pend', 'amp', 'dmin', 'matr_presc', 'hcepp'];
-const PL_F = [['n', 'n'], ['sp', 't'], ['d', 'n'], ['h', 'n'], ['dest', 't'], ['eta', 't'], ['stato', 't'], ['areaId', 't'], ['note', 't'], ['op', 't'], ['pos', 't'], ['ver', 't'], ['dc', 'n'], ['hc', 'n'], ['qual', 't'], ['motivo', 't'], ['vnote', 't'], ['vop', 't']];
+const PL_F = [['n', 'n'], ['sp', 't'], ['d', 'n'], ['h', 'n'], ['dest', 't'], ['eta', 't'], ['stato', 't'], ['segno', 't'], ['areaId', 't'], ['note', 't'], ['op', 't'], ['pos', 't'], ['ver', 't'], ['dc', 'n'], ['hc', 'n'], ['qual', 't'], ['motivo', 't'], ['vnote', 't'], ['vop', 't']];
 const DN_F = [['plId', 't'], ['sp', 't'], ['d', 'n'], ['tipo', 't'], ['sotto', 't'], ['pct', 'n'], ['evit', 'n'], ['sup', 'n'], ['lung', 'n'], ['causa', 't'], ['note', 't'], ['areaId', 't'], ['op', 't'], ['pos', 't']];
 function mcSchema() {
   return {
     cantiere: {geom: null, cols: [['uuid', 'TEXT'], ['mod_ts', 'INTEGER']].concat(LOT_F.map(k => [k, LOT_NUM.includes(k) ? 'REAL' : 'TEXT'])).concat([['extra', 'TEXT']])},
     aree: {geom: 'MULTIPOLYGON', cols: [['uuid', 'TEXT'], ['mod_ts', 'INTEGER'], ['nome', 'TEXT'], ['tipo', 'TEXT'], ['note', 'TEXT'], ['sup_carto', 'REAL']]},
-    piante: {geom: 'POINT', cols: [['uuid', 'TEXT'], ['mod_ts', 'INTEGER'], ['n', 'INTEGER'], ['specie', 'TEXT'], ['d', 'REAL'], ['h', 'REAL'], ['dest', 'TEXT'], ['eta', 'TEXT'], ['stato', 'TEXT'], ['area_uuid', 'TEXT'], ['area_nome', 'TEXT'], ['note', 'TEXT'], ['operatore', 'TEXT'], ['dispositivo', 'TEXT'], ['data', 'TEXT'], ['acc', 'REAL'], ['volume', 'REAL'],
+    piante: {geom: 'POINT', cols: [['uuid', 'TEXT'], ['mod_ts', 'INTEGER'], ['n', 'INTEGER'], ['specie', 'TEXT'], ['d', 'REAL'], ['h', 'REAL'], ['dest', 'TEXT'], ['eta', 'TEXT'], ['stato', 'TEXT'], ['segno', 'TEXT'], ['area_uuid', 'TEXT'], ['area_nome', 'TEXT'], ['note', 'TEXT'], ['operatore', 'TEXT'], ['dispositivo', 'TEXT'], ['data', 'TEXT'], ['acc', 'REAL'], ['volume', 'REAL'],
       ['verifica', 'TEXT'], ['d_ceppaia', 'REAL'], ['h_ceppaia', 'REAL'], ['qualita', 'TEXT'], ['motivo', 'TEXT'], ['note_ver', 'TEXT'], ['verificata_da', 'TEXT'], ['data_ver', 'TEXT'], ['anomalia', 'INTEGER']]},
     danni: {geom: 'POINT', cols: [['uuid', 'TEXT'], ['mod_ts', 'INTEGER'], ['pianta_uuid', 'TEXT'], ['pianta_n', 'INTEGER'], ['specie', 'TEXT'], ['d', 'REAL'], ['tipo', 'TEXT'], ['sottotipo', 'TEXT'], ['grado', 'REAL'], ['gravita', 'TEXT'], ['evitabile', 'INTEGER'], ['sup', 'REAL'], ['lung', 'REAL'], ['causa', 'TEXT'], ['note', 'TEXT'], ['area_uuid', 'TEXT'], ['operatore', 'TEXT'], ['data', 'TEXT'], ['acc', 'REAL']]},
     foto: {geom: null, cols: FOTO_COLS},
@@ -1831,7 +1831,7 @@ async function exportGpkg(lotId) {
   const ps = pianteOf(lotId); await fidFix('piante', ps); const cur = curves(lotId);
   for (const x of ps) {
     const c = treeCalc(l, x, cur);
-    const row = {fid: x.fid, uuid: x.id, mod_ts: x.mod || x.t || Date.now(), n: numOrNull(x.n), specie: x.sp, d: numOrNull(x.d), h: numOrNull(x.h), dest: x.dest || null, eta: x.eta || null, stato: x.stato || null, area_uuid: x.areaId || null, area_nome: areaName(x.areaId) || null, note: x.note || null, operatore: x.op || null, dispositivo: x.dev || null, data: x.t ? new Date(x.t).toISOString() : null, acc: x.acc ?? null, volume: c.v != null ? Math.round(c.v * 10000) / 10000 : null,
+    const row = {fid: x.fid, uuid: x.id, mod_ts: x.mod || x.t || Date.now(), n: numOrNull(x.n), specie: x.sp, d: numOrNull(x.d), h: numOrNull(x.h), dest: x.dest || null, eta: x.eta || null, stato: x.stato || null, segno: x.segno || null, area_uuid: x.areaId || null, area_nome: areaName(x.areaId) || null, note: x.note || null, operatore: x.op || null, dispositivo: x.dev || null, data: x.t ? new Date(x.t).toISOString() : null, acc: x.acc ?? null, volume: c.v != null ? Math.round(c.v * 10000) / 10000 : null,
       verifica: x.ver || null, d_ceppaia: numOrNull(x.dc), h_ceppaia: numOrNull(x.hc), qualita: x.qual || null, motivo: x.motivo || null, note_ver: x.vnote || null, verificata_da: x.vop || null, data_ver: x.vt ? new Date(x.vt).toISOString() : null, anomalia: dcAnom(l, x) ? 1 : 0, geom: ptGeom(x)};
     insertRow(db, 'piante', schema.piante, row);
   }
@@ -1925,13 +1925,13 @@ async function importGpkg_(u8, intoLotId, opt = {}) {
   const areaOf = pickAreaOf(lotId);
   await merge3({db, bdb, t: 'piante', store: 'piante', lotId, del, rep, F: PL_F,
     conv: (r, gc, loc) => {
-      if (loc) return {n: loc.n, sp: loc.sp, d: loc.d, h: loc.h, dest: loc.dest, eta: loc.eta, stato: loc.stato, areaId: loc.areaId, note: loc.note, op: loc.op, pos: posKey(loc.lon, loc.lat), ver: loc.ver || '', dc: loc.dc, hc: loc.hc, qual: loc.qual || '', motivo: loc.motivo || '', vnote: loc.vnote || '', vop: loc.vop || ''};
+      if (loc) return {n: loc.n, sp: loc.sp, d: loc.d, h: loc.h, dest: loc.dest, eta: loc.eta, stato: loc.stato, segno: loc.segno || '', areaId: loc.areaId, note: loc.note, op: loc.op, pos: posKey(loc.lon, loc.lat), ver: loc.ver || '', dc: loc.dc, hc: loc.hc, qual: loc.qual || '', motivo: loc.motivo || '', vnote: loc.vnote || '', vop: loc.vop || ''};
       const g = readGeom(r, gc);
-      return {n: r.n ?? '', sp: String(r.specie || '').toUpperCase(), d: r.d ?? '', h: r.h ?? '', dest: r.dest || 'T', eta: r.eta || '', stato: r.stato || '', areaId: areaOf(r, g), note: r.note || '', op: r.operatore || '', pos: g ? posKey(g.coordinates[0], g.coordinates[1]) : '', lon: g ? g.coordinates[0] : null, lat: g ? g.coordinates[1] : null, acc: r.acc, dev: r.dispositivo || '', t: r.data ? Date.parse(r.data) : (r.mod_ts || Date.now()),
+      return {n: r.n ?? '', sp: String(r.specie || '').toUpperCase(), d: r.d ?? '', h: r.h ?? '', dest: r.dest || 'T', eta: r.eta || '', stato: r.stato || '', segno: r.segno || '', areaId: areaOf(r, g), note: r.note || '', op: r.operatore || '', pos: g ? posKey(g.coordinates[0], g.coordinates[1]) : '', lon: g ? g.coordinates[0] : null, lat: g ? g.coordinates[1] : null, acc: r.acc, dev: r.dispositivo || '', t: r.data ? Date.parse(r.data) : (r.mod_ts || Date.now()),
         ver: r.verifica || '', dc: r.d_ceppaia ?? '', hc: r.h_ceppaia ?? '', qual: r.qualita || '', motivo: r.motivo || '', vnote: r.note_ver || '', vop: r.verificata_da || '', vt: r.data_ver ? Date.parse(r.data_ver) : 0};
     },
     apply: (loc, k, R) => { posApply(loc, k, R); if (k === 'ver' && R.vt) loc.vt = R.vt; },
-    mk: (R, r) => { if (!R.sp) return null; if (!R.d && !R.dc) return null; const o = {id: uid(), lottoId: lotId, n: R.n, sp: R.sp, d: R.d, h: R.h, dest: R.dest, eta: R.eta, stato: R.stato, areaId: R.areaId, note: R.note, op: R.op, dev: R.dev, t: R.t, mod: r.mod_ts || 0, fid: r.fid, ver: R.ver, dc: R.dc, hc: R.hc, qual: R.qual, motivo: R.motivo, vnote: R.vnote, vop: R.vop, vt: R.vt}; if (R.lat != null) { o.lat = R.lat; o.lon = R.lon; o.acc = R.acc; } return o; }});
+    mk: (R, r) => { if (!R.sp) return null; if (!R.d && !R.dc) return null; const o = {id: uid(), lottoId: lotId, n: R.n, sp: R.sp, d: R.d, h: R.h, dest: R.dest, eta: R.eta, stato: R.stato, segno: R.segno || '', areaId: R.areaId, note: R.note, op: R.op, dev: R.dev, t: R.t, mod: r.mod_ts || 0, fid: r.fid, ver: R.ver, dc: R.dc, hc: R.hc, qual: R.qual, motivo: R.motivo, vnote: R.vnote, vop: R.vop, vt: R.vt}; if (R.lat != null) { o.lat = R.lat; o.lon = R.lon; o.acc = R.acc; } return o; }});
   await merge3({db, bdb, t: 'danni', store: 'danni', lotId, del, rep, F: DN_F,
     conv: (r, gc, loc) => {
       if (loc) return {plId: loc.plId || '', sp: loc.sp || '', d: loc.d, tipo: loc.tipo, sotto: loc.sotto || '', pct: loc.pct, evit: loc.evit === '' || loc.evit == null ? '' : loc.evit, sup: loc.sup, lung: loc.lung, causa: loc.causa || '', note: loc.note || '', areaId: loc.areaId || '', op: loc.op || '', pos: posKey(loc.lon, loc.lat)};
@@ -1991,7 +1991,7 @@ async function importMart(u8) {
     const l = {id: uid(), sez: lr.sez || (/Ceduo(?! in conversione)/.test(lr.governo || '') ? 'ceduo' : 'fustaia'), mart_id: lr.uuid || '', dl: LS.get('dl-tec', ''), data_inizio: new Date().toISOString().slice(0, 10), t: Date.now()};
     MART_F.forEach(k => { if (lr[k] != null && lr[k] !== '') l[k] = typeof lr[k] === 'number' ? String(lr[k]) : lr[k]; });
     l.nome = l.nome || 'Cantiere importato'; l.regione = l.regione || 'Calabria'; l.progettista = lr.tecnico || ''; l.amp = l.amp || (l.sez === 'ceduo' ? 2 : 5);
-    try { const e = JSON.parse(lr.extra || '{}'); ['hm', 'tav', 'peso'].forEach(k => { if (e[k]) l[k] = e[k]; }); } catch (e) {}
+    try { const e = JSON.parse(lr.extra || '{}'); ['hm', 'tav', 'peso', 'dnum'].forEach(k => { if (e[k]) l[k] = e[k]; }); } catch (e) {}
     await putS('lotti', l);
     for (const r of rows(db, 'tavole')) { if (!r.uuid || S.tavole.some(t => t.id === r.uuid)) continue; let d = {}; try { d = JSON.parse(r.dati || '{}'); } catch (e) {} await putS('tavole', Object.assign({id: r.uuid, t: Date.now(), nome: r.nome, fonte: r.fonte || '', tipo: r.tipo, mod: r.mod_ts || 0}, d)); }
     const gc = geomCol(db, 'aree'); const amap = {};
@@ -1999,7 +1999,7 @@ async function importMart(u8) {
     const gp = geomCol(db, 'piante'); const areaOf = pickAreaOf(l.id);
     for (const r of rows(db, 'piante')) {
       if (!r.specie || (!r.d && r.d !== 0)) continue; const g = readGeom(r, gp);
-      const x = {id: uid(), lottoId: l.id, mart_id: r.uuid || '', n: r.n ?? '', sp: String(r.specie).toUpperCase(), d: r.d ?? '', h: r.h ?? '', dest: r.dest || 'T', eta: r.eta || '', stato: r.stato || '', areaId: (r.area_uuid && amap[r.area_uuid]) || areaOf({area_nome: r.area_nome}, g), note: r.note || '', op: r.operatore || '', t: r.data ? Date.parse(r.data) : Date.now(), ver: '', dc: '', hc: '', qual: '', motivo: '', vnote: '', vop: ''};
+      const x = {id: uid(), lottoId: l.id, mart_id: r.uuid || '', n: r.n ?? '', segno: r.segno || '', sp: String(r.specie).toUpperCase(), d: r.d ?? '', h: r.h ?? '', dest: r.dest || 'T', eta: r.eta || '', stato: r.stato || '', areaId: (r.area_uuid && amap[r.area_uuid]) || areaOf({area_nome: r.area_nome}, g), note: r.note || '', op: r.operatore || '', t: r.data ? Date.parse(r.data) : Date.now(), ver: '', dc: '', hc: '', qual: '', motivo: '', vnote: '', vop: ''};
       if (g) { x.lon = g.coordinates[0]; x.lat = g.coordinates[1]; x.acc = r.acc; }
       await putS('piante', x); rep.piante++;
     }
@@ -2060,7 +2060,7 @@ async function pdfLines(u8) {
       if (last && x - (last.x + last.w) < 1.5 && x >= last.x) { last.s += (/\s$/.test(last.s) || /^\s/.test(s) ? '' : ' ') + s; last.w = x + it.width - last.x; } // parti della stessa cella
       else r.cells.push({x, w: it.width, s});
     }
-    rows.sort((a, b) => b.y - a.y); pages.push(rows.map(r => r.cells.sort((a, b) => a.x - b.x).map(c => c.s.trim()).filter(Boolean)));
+    rows.sort((a, b) => b.y - a.y); const pg2 = rows.map(r => { const cs = r.cells.sort((a, b) => a.x - b.x).filter(c => c.s.trim()); const arr = cs.map(c => c.s.trim()); arr.items = cs.map(c => ({x: c.x + c.w / 2, s: c.s.trim()})); return arr; }); pages.push(pg2);
   }
   try { doc.destroy(); } catch (e) {}
   return pages;
@@ -2079,22 +2079,25 @@ function pdfParse(pages) {
       for (let i = 0; i + 1 < cells.length; i++) { const k = PDF_HEAD[cells[i]]; if (k && lot[k] == null) { lot[k] = cells[i + 1]; i++; } }
       if (/^N\.\s*Specie/.test(line) || (cells[0] === 'N.' && cells[1] === 'Specie')) { inTable = true; continue; }
       if (/^Riepilogo per specie|^Distribuzione per classi|^Matricine per età|^Verifiche$|^Totale \d+ piante/.test(line)) { inTable = false; continue; }
-      if (!dest || !inTable) continue;
-      const n = /^\d+$/.test(cells[0]) ? +cells[0] : null; const m = cells[1] && cells[1].match(/^([A-Z]{2,4})\s+(.+)$/);
-      if (n == null || !m) continue;
-      const d = itNum(cells[2]); if (d === '') continue;
-      const x = {n, sp: m[1], spNome: m[2], d, dest, eta: '', h: '', note: '', area: '', lat: '', lon: ''};
-      const rest = cells.slice(3);
+      if (!dest) continue;
+      // riga della tabella: tokenizzata sul testo intero (le celle del PDF possono fondersi o spezzarsi)
+      const tok = line.replace(/\s+/g, ' ').trim().split(' '); if (tok.length < 3) continue;
+      const isX = tok[0] === 'X'; const n = /^\d+$/.test(tok[0]) ? +tok[0] : isX ? '' : null; if (n == null) continue;
+      if (!/^[A-Z]{2,4}$/.test(tok[1])) continue;
+      let i = 2; const nome = []; while (i < tok.length && !/^\d+(?:[.,]\d+)?\*?$/.test(tok[i])) nome.push(tok[i++]);
+      if (i >= tok.length) continue; const d = itNum(tok[i]); if (d === '' || d <= 0 || d > 300) continue; i++;
+      const x = {n, segno: isX ? 'X' : '', sp: tok[1], spNome: nome.join(' '), d, dest, eta: '', h: '', note: '', area: '', lat: '', lon: ''};
+      const rest = tok.slice(i); const free = [];
       for (const c of rest) {
         if (/^(1T|2T|3T|≥4T|>=4T)$/.test(c) && !x.eta) { x.eta = c.replace('>=', '≥'); continue; }
-        if (/^\d+\.\d{5,}$/.test(c)) { if (x.lat === '') x.lat = +c; else if (x.lon === '') x.lon = +c; continue; }
-        if (/^\d+,\d\*?$/.test(c) && x.h === '') { if (!/\*$/.test(c)) x.h = itNum(c); else x.hStim = itNum(c); continue; }
+        if (/^-?\d+\.\d{4,}$/.test(c)) { if (x.lat === '') x.lat = +c; else if (x.lon === '') x.lon = +c; continue; }
+        if (/^\d+,\d\*?$/.test(c) && x.h === '' && x.hStim == null) { if (!/\*$/.test(c)) x.h = itNum(c); else x.hStim = itNum(c); continue; }
         if (/^\d+,\d{3}$/.test(c) && x.v == null) { x.v = itNum(c); continue; }
-        if (/^(secca|deperiente|schiantata)\b/.test(c)) { x.stato = {secca: 'S', deperiente: 'D', schiantata: 'X'}[c.split(' ')[0]]; const r = c.replace(/^\S+\s*/, ''); if (r) x.note = r; continue; }
-        if (!x.area && dest !== 'R' && x.v != null && !x.note) { x.area = c; continue; }
-        if (dest === 'R' && x.lon !== '' && !x.area) { x.area = c; continue; }
-        x.note = x.note ? x.note + ' ' + c : c;
+        free.push(c);
       }
+      let note = free.join(' ');
+      const st = note.match(/^(secca|deperiente|schiantata)\b\s*/); if (st) { x.stato = {secca: 'S', deperiente: 'D', schiantata: 'X'}[st[1]]; note = note.slice(st[0].length); }
+      if (note && (dest === 'R' || x.v != null)) { const parts = note.split(' '); x.area = parts[0]; x.note = parts.slice(1).join(' '); } else x.note = note;
       piante.push(x);
     }
   }
@@ -2103,22 +2106,72 @@ function pdfParse(pages) {
   lot.nome = name || lot.nome || 'Cantiere da PDF';
   return {lot, piante};
 }
+
+/* ---------- PDF tabellare generico (stampa da Excel): colonne riconosciute dalle intestazioni ----------
+   Intestazioni: N° / N. / Numero (una per blocco, anche più blocchi affiancati), nomi di specie come sottocolonne del diametro
+   (es. "Cerro" "Farnetto"), oppure "Diametro" + "Specie"; "Volume", "Motivo"/"Note", "Altezza"/"h". Numero "X" = contrassegno X. */
+function pdfParseTab(pages, dest) {
+  const spByName = {}; S.specie.forEach(sp => { spByName[sp.nome.toLowerCase()] = sp.id; spByName[sp.id.toLowerCase()] = sp.id; });
+  const isN = s => /^(n[°º.]?|n[°º.]?\s*progr\w*|numero|progressivo n[°º.]?)$/i.test(s);
+  const near = (items, x, tol) => { let best = null; for (const it of items) { const d = Math.abs(it.x - x); if (d <= tol && (!best || d < best.d)) best = {it, d}; } return best ? best.it : null; };
+  let cfg = null; const piante = []; let lastSp = '';
+  for (const rows of pages) {
+    for (let ri = 0; ri < rows.length; ri++) {
+      const items = rows[ri].items || []; if (!items.length) continue;
+      const nHead = items.filter(it => isN(it.s));
+      if (nHead.length) { // riga di intestazione: costruisco i blocchi guardando anche le 3 righe seguenti
+        const look = [items].concat(rows.slice(ri + 1, ri + 4).map(r => r.items || []).filter(a => a.length)).flat();
+        const xs = nHead.map(h => h.x).sort((a, b) => a - b);
+        cfg = xs.map((x0, i) => { const x1 = xs[i + 1] != null ? xs[i + 1] : Infinity; const inb = look.filter(it => it.x >= x0 - 30 && it.x < x1 - 30);
+          const sp = inb.filter(it => spByName[it.s.toLowerCase()]).map(it => ({x: it.x, id: spByName[it.s.toLowerCase()]}));
+          const col = re => { const it = inb.find(it => re.test(it.s)); return it ? it.x : null; };
+          return {n: x0, sp, d: col(/^d(iametro)?\b/i), spc: col(/^specie$/i), h: col(/^h\b|^altezza/i), v: col(/^v(olume)?\b/i), mot: col(/^motivo/i), note: col(/^note/i)}; });
+        continue;
+      }
+      if (!cfg) continue;
+      for (const b of cfg) {
+        const nIt = near(items, b.n, 28); if (!nIt) continue; const isX = /^X$/i.test(nIt.s); if (!isX && !/^\d+$/.test(nIt.s)) continue;
+        let d = '', sp = '';
+        if (b.sp.length) { for (const c of b.sp) { const it = near(items.filter(it => it !== nIt), c.x, 24); if (it && /^\d+(?:[.,]\d+)?$/.test(it.s)) { d = itNum(it.s); sp = c.id; break; } } }
+        if (d === '' && b.d != null) { const it = near(items, b.d, 40); if (it && /^\d+(?:[.,]\d+)?$/.test(it.s)) d = itNum(it.s); }
+        if (d === '' || d <= 0 || d > 300) continue;
+        if (!sp && b.spc != null) { const it = near(items, b.spc, 60); if (it) sp = spByName[it.s.toLowerCase()] || (SP[it.s.toUpperCase()] ? it.s.toUpperCase() : ''); }
+        if (!sp) sp = lastSp; if (!sp) continue; lastSp = sp;
+        const x = {n: isX ? '' : +nIt.s, segno: isX ? 'X' : '', sp, d, dest, eta: '', h: '', note: '', area: '', lat: '', lon: ''};
+        if (b.h != null) { const it = near(items, b.h, 30); if (it && /^\d+(?:[.,]\d+)?$/.test(it.s)) x.h = itNum(it.s); }
+        if (b.v != null) { const it = near(items, b.v, 30); if (it && /^\d+(?:[.,]\d+)?$/.test(it.s)) x.v = itNum(it.s); }
+        if (b.mot != null) { const it = near(items, b.mot, 24); if (it && it !== nIt && /^\S{1,30}$/.test(it.s)) x.note = 'Motivo ' + it.s; }
+        if (b.note != null) { const it = near(items, b.note, 60); if (it) x.note = (x.note ? x.note + ' · ' : '') + it.s; }
+        piante.push(x);
+      }
+    }
+  }
+  return piante;
+}
 async function importMartPdf(u8) {
-  const pages = await pdfLines(u8); const {lot: lr, piante} = pdfParse(pages);
+  const pages = await pdfLines(u8); let {lot: lr, piante} = pdfParse(pages);
+  if (!piante.length) { // formato tabellare (es. stampa da Excel)
+    const first = (pages[0] || []).map(r => r.join(' ')).join('\n');
+    const dest = /MATRICIN|RILASCIARE/i.test(first) ? 'M' : 'T';
+    piante = pdfParseTab(pages, dest);
+    const t = first.match(/PIEDILISTA[^\n]*/i); if (t) { const m = t[0].match(/particella\s*n?[°º.]?\s*(\w+)/i); if (m) { lr.particella = lr.particella || m[1]; lr.nome = `Particella ${m[1]}`; } const su = t[0].match(/superficie[^\d]*(\d+(?:[.,]\d+)?)\s*ha/i); if (su) lr.sup = lr.sup || String(itNum(su[1])); if (!lr.nome || lr.nome === 'Cantiere da PDF') lr.nome = t[0].replace(/^PIEDILISTA\s+DI\s+\w+\s*[-–:]?\s*/i, '').split(/[,;]/)[0].trim().slice(0, 60) || 'Cantiere da PDF'; }
+    const tec = first.match(/Dott\.?(?:ssa)?[^\n]*?([A-ZÀ-Ü][A-ZÀ-Üa-zà-ü' ]+ [A-ZÀ-Ü][a-zà-ü]+)/); if (tec && !lr.progettista) lr.progettista = tec[0].replace(/\s*-.*$/, '').trim();
+    const mart = first.match(/martello forestale:?\s*([A-Z]{2}\s*\d+)/i); if (mart) lr.martello = mart[1];
+  }
   if (!piante.length) throw new Error('Nel PDF non ho trovato righe del piedilista (serve il piedilista di martellata / matricinatura o il fascicolo di Martellata Campo).');
   IMPORTING++;
   try {
     const nM = piante.filter(x => x.dest === 'M').length, nT = piante.filter(x => x.dest === 'T').length;
     const ced = /^Ceduo(?! in conversione)/.test(lr.governo || '') || (nM > 0 && nM >= nT);
     const l = {id: uid(), sez: ced ? 'ceduo' : 'fustaia', nome: lr.nome, regione: lr.regione || LS.get('dl-reg', 'Calabria'), comune: lr.comune || '', localita: lr.localita || '', proprieta: lr.proprieta || '', particella: lr.particella || '', catasto: lr.catasto || '',
-      governo: lr.governo || (ced ? 'Ceduo matricinato' : ''), intervento: lr.intervento || '', eta: lr.eta || '', turno: lr.turno || '', sup: lr.sup || '', progettista: lr.progettista || '', amp: ced ? 2 : 5, dl: LS.get('dl-tec', ''), data_inizio: new Date().toISOString().slice(0, 10), t: Date.now()};
+      governo: lr.governo || (ced ? 'Ceduo matricinato' : ''), intervento: lr.intervento || '', eta: lr.eta || '', turno: lr.turno || '', sup: lr.sup || '', progettista: lr.progettista || '', martello: lr.martello || '', amp: ced ? 2 : 5, dl: LS.get('dl-tec', ''), data_inizio: new Date().toISOString().slice(0, 10), t: Date.now()};
     await putS('lotti', l); const rep = {piante: 0, aree: 0}; const areas = {};
     const seen = new Set();
     for (const p of piante) {
-      const key = p.dest + ':' + p.n; if (seen.has(key)) continue; seen.add(key); // il fascicolo può ripetere le tabelle
+      const key = p.dest + ':' + p.n; if (p.n !== '' && seen.has(key)) continue; seen.add(key); // il fascicolo può ripetere le tabelle
       let areaId = ''; if (p.area) { if (!areas[p.area]) { const a = {id: uid(), lottoId: l.id, nome: p.area, tipo: 'Sezione di taglio', t: Date.now()}; await putS('aree', a); areas[p.area] = a.id; rep.aree++; } areaId = areas[p.area]; }
       if (!SP[p.sp]) { S.specie.push({id: p.sp, nome: p.spNome || p.sp, tipo: 'L', infc: 399, grp: 'altre', ass: true, f: 0.5, peso: '', hm: ''}); await DB.put('config', {id: 'specie', list: S.specie}); refreshSP(); }
-      const x = {id: uid(), lottoId: l.id, n: p.n, sp: p.sp, d: p.d, h: p.h, dest: p.dest, eta: p.eta, stato: p.stato || '', areaId, note: p.note, op: '', t: Date.now(), ver: '', dc: '', hc: '', qual: '', motivo: '', vnote: '', vop: ''};
+      const x = {id: uid(), lottoId: l.id, n: p.n, segno: p.segno || '', sp: p.sp, d: p.d, h: p.h, dest: p.dest, eta: p.eta, stato: p.stato || '', areaId, note: p.note, op: '', t: Date.now(), ver: '', dc: '', hc: '', qual: '', motivo: '', vnote: '', vop: ''};
       if (p.lat !== '' && p.lon !== '') { x.lat = p.lat; x.lon = p.lon; }
       await putS('piante', x); rep.piante++;
     }
@@ -3541,7 +3594,7 @@ async function reportBlocks(l, opt = {}) {
 /* piedilista completo di verifica */
 function piedilistaBlocks(l) {
   const ced = isCeduo(l); const ps = pianteOf(l.id).filter(x => x.dest !== 'X'); const cur = curves(l.id);
-  const rows = ps.map(x => { const c = treeCalc(l, x, cur); return [String(x.n ?? ''), rSp(x.sp), rf0(num(x.d)), DEST_S[x.dest] || '', VER_ST[x.ver || ''], num(x.dc) ? rf0(num(x.dc)) : '', ced ? (num(x.hc) ? rf0(num(x.hc)) : '') : (x.ver === 'T' && c.v != null ? rf2(c.v) : ''), x.qual ? QUAL_CEPP[x.qual] : '', String(danniPl(x.id).length || ''), [dcAnom(l, x) ? 'diametro incoerente' : '', x.vnote].filter(Boolean).join(' · ')]; });
+  const rows = ps.map(x => { const c = treeCalc(l, x, cur); return [x.segno === 'X' ? 'X' : String(x.n ?? ''), rSp(x.sp), rf0(num(x.d)), DEST_S[x.dest] || '', VER_ST[x.ver || ''], num(x.dc) ? rf0(num(x.dc)) : '', ced ? (num(x.hc) ? rf0(num(x.hc)) : '') : (x.ver === 'T' && c.v != null ? rf2(c.v) : ''), x.qual ? QUAL_CEPP[x.qual] : '', String(danniPl(x.id).length || ''), [dcAnom(l, x) ? 'diametro incoerente' : '', x.vnote].filter(Boolean).join(' · ')]; });
   return [{t: 'table', small: true, head: ['N.', 'Specie', 'd cm', 'Dest.', 'Esito', 'Cepp. cm', ced ? 'h cepp.' : 'V m³', 'Qualità', 'Danni', 'Note'], rows: rows.length ? rows : [['—']], caption: 'Piedilista di verifica: tutte le piante del progetto di taglio con l\'esito del controllo.'}];
 }
 /* testo del verbale di sopralluogo */
@@ -3653,7 +3706,7 @@ const RD = {
   csv() {
     const l = lot();
     const rows = [['N', 'Destinazione', 'Specie', 'Nome', 'd_cm', 'Esito', 'Ceppaia_d_cm', 'Ceppaia_h_cm', 'Qualita', 'Motivo', 'Danni', 'Area', 'Lat', 'Lon', 'Verificata_da', 'Note']];
-    pianteOf(l.id).forEach(x => rows.push([x.n, DEST_S[x.dest] || '', x.sp, spName(x.sp), csvn(num(x.d)), x.dest === 'X' ? 'non martellata' : VER_ST[x.ver || ''], csvn(num(x.dc)), csvn(num(x.hc)), x.qual ? QUAL_CEPP[x.qual] : '', x.motivo || '', danniPl(x.id).length, areaName(x.areaId), x.lat ?? '', x.lon ?? '', x.vop || '', x.vnote || '']));
+    pianteOf(l.id).forEach(x => rows.push([x.segno === 'X' ? 'X' : x.n, DEST_S[x.dest] || '', x.sp, spName(x.sp), csvn(num(x.d)), x.dest === 'X' ? 'non martellata' : VER_ST[x.ver || ''], csvn(num(x.dc)), csvn(num(x.hc)), x.qual ? QUAL_CEPP[x.qual] : '', x.motivo || '', danniPl(x.id).length, areaName(x.areaId), x.lat ?? '', x.lon ?? '', x.vop || '', x.vnote || '']));
     const txt = '﻿' + rows.map(r => r.map(v => { v = String(v ?? ''); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';')).join('\r\n');
     out(fname(l, 'Piedilista_verifica', 'csv'), txt, 'text/csv', true);
   }
