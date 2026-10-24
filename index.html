@@ -186,7 +186,7 @@ table.pl tr{cursor:pointer}
    DL Foresta — dati: specie, cubatura INFC, norme regionali, codici della direzione lavori
    Tutto modificabile nell'app (Altro → Specie e tavole, Norme).
    ============================================================ */
-const APP_VER = '1.1.1';
+const APP_VER = '1.1.2';
 const APP_NAME = 'DL Foresta';
 
 /* Equazioni INFC 2005 (Tabacchi et al., 2011): volume fusto e rami grossi v [dm³] = b1 + b2·d²·h (+ b3·d);
@@ -924,6 +924,7 @@ async function boot() {
   if (typeof autoStart === 'function') autoStart();
   if (window.PAF_PWA && !NATIVE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
   go(S.lotti.length ? (VIEWS[sel.view] ? sel.view : 'cantieri') : 'cantieri');
+  if (typeof PT !== 'undefined' && PT.deep) PT.deep();
 }
 
 /* ============================================================
@@ -3909,7 +3910,18 @@ VIEWS.portale = () => PT.view();
 /* pubblicazione automatica: ogni salvataggio segna il lotto come da pubblicare */
 (() => { const _save = save; save = async function (...a) { const r = await _save.apply(this, a); PT.mark(); return r; }; const _remove = remove; remove = async function (...a) { const r = await _remove.apply(this, a); PT.mark(); return r; }; })();
 /* apertura da link del portale: ...?portale=<pid> */
-addEventListener('load', () => { const pid = new URLSearchParams(location.search).get('portale'); if (!pid) return; history.replaceState(null, '', location.pathname); setTimeout(() => { if (!PT.on()) { toast('Configura il portale in Altro → Portale per aprire il progetto', 6000); return; } PT.apriUI(pid); }, 1500); });
+/* apertura da link del portale: ...?portale=<pid> (chiamata alla fine di boot) */
+PT.deep = async () => {
+  const pid = new URLSearchParams(location.search).get('portale'); if (!pid) return;
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  if (!PT.url() && document.referrer) { try { const o = new URL(document.referrer).origin; if (/workers\.dev|portale/i.test(o)) LS.set('portale-url', o); } catch (e) {} }
+  if (PT.on()) { setTimeout(() => PT.apriUI(pid), 300); return; }
+  $('#view').innerHTML = `<div class="card"><h2>Progetto dal portale</h2>
+    <p class="muted">Per scaricare il progetto in questa app inserisci (una volta sola, su questo dispositivo) l'indirizzo e la chiave del Portale Foresta.</p>
+    <label class="f"><span>Indirizzo del portale</span><input id="ptd-u" value="${esc(PT.url())}" placeholder="https://foresta-portale.xxxx.workers.dev" inputmode="url"></label>
+    <label class="f"><span>Chiave di accesso</span><input id="ptd-k" type="password" value="${esc(PT.key())}" placeholder="chiave del portale"></label>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="LS.set('portale-url',$('#ptd-u').value.trim());LS.set('portale-key',$('#ptd-k').value.trim());PT.list=null;if(!PT.on()){toast('Inserisci indirizzo e chiave',2500);return}PT.apriUI('${esc(pid)}')">Apri il progetto</button><button class="btn sec" onclick="go('cantieri')">Annulla</button></div></div>`;
+};
 
 boot();
 </script>
