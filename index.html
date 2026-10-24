@@ -186,7 +186,7 @@ table.pl tr{cursor:pointer}
    DL Foresta — dati: specie, cubatura INFC, norme regionali, codici della direzione lavori
    Tutto modificabile nell'app (Altro → Specie e tavole, Norme).
    ============================================================ */
-const APP_VER = '1.1.2';
+const APP_VER = '1.1.3';
 const APP_NAME = 'DL Foresta';
 
 /* Equazioni INFC 2005 (Tabacchi et al., 2011): volume fusto e rami grossi v [dm³] = b1 + b2·d²·h (+ b3·d);
@@ -3840,7 +3840,7 @@ const PT = {
   async autoPub() { const l = PT.cur_(); if (!l || !navigator.onLine || PT.busy) return; try { await PT.pub(l, () => {}, true); } catch (e) { console.warn('portale auto', e); } },
   /* apre nell'app un progetto del portale (stessa app): scarica il GeoPackage e le foto */
   async apri(pid, log = () => {}) {
-    if (!pid.startsWith(PT_APP + '_')) { const a = PT_APPS[pid.split('_')[0]]; if (a) { if (confirm(`Questo progetto è di ${a.nome}: aprirlo lì?`)) window.open(a.url + '?portale=' + encodeURIComponent(pid), '_blank'); } return; }
+    if (!pid.startsWith(PT_APP + '_')) { const a = PT_APPS[pid.split('_')[0]]; if (a) { if (confirm(`Questo progetto è di ${a.nome}: aprirlo lì?`)) { const u = a.url + '?portale=' + encodeURIComponent(pid); let w = null; try { w = window.open(u, '_blank'); } catch (e) {} if (!w) location.href = u; } } return; }
     const files = (await PT.filesP(pid)).files; const g = files.find(f => f.name === 'dati/' + GPKG_FILE); if (!g) throw new Error('Nel portale manca il GeoPackage di questo progetto');
     log('Scarico i dati…'); const u8 = await PT.get(pid, g.name); const lid = pid.slice(PT_APP.length + 1); const loc = S[PT_STORE].find(x => x.id === lid);
     const r = await importGpkg(u8, loc ? lid : null, {force: true}); const id = loc ? lid : (r && r.lot ? r.lot.id : (S[PT_STORE].find(x => x.id === lid) || S[PT_STORE][S[PT_STORE].length - 1]).id);
@@ -3890,7 +3890,7 @@ const PT = {
     $('#view').innerHTML = `<div class="card"><button class="btn sm sec" onclick="PT.view()">‹ Portale</button><h2 style="margin-top:8px">${esc(p.nome || pid)}</h2><p class="muted">${esc(PT_APPS[p.app] ? PT_APPS[p.app].nome : p.app)} · ${esc([p.comune, p.localita, p.proprieta].filter(Boolean).join(' · '))}${p.sup ? ' · ' + fmt(num(p.sup), 2) + ' ha' : ''}<br>pubblicato ${dIt(p.pubblicato)}${p.pubblicatoDa ? ' da ' + esc(p.pubblicatoDa) : ''}${p.operatori && p.operatori.length ? ' · operatori: ' + esc(p.operatori.join(', ')) : ''}</p>
       <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:8px">${PT.statoPills(p).map(([k, v, c]) => `<span class="pill ${c || ''}">${esc(String(v))} ${esc(k)}</span>`).join('')}</div>
       ${p.verifiche && p.verifiche.length ? `<div class="list" style="margin-bottom:8px">${p.verifiche.map(v => `<div class="it"><span>${v.ok === true ? '✅' : v.ok === false ? '❌' : 'ℹ️'} ${esc(v.t)}</span></div>`).join('')}</div>` : ''}
-      <div class="row"><button class="btn" onclick="PT.apriUI('${pid}')">${p.app === PT_APP ? 'Apri in questa app' : 'Apri in ' + esc(PT_APPS[p.app] ? PT_APPS[p.app].nome : p.app)}</button></div>
+      <div class="row">${p.app === PT_APP ? `<button class="btn" onclick="PT.apriUI('${pid}')">Apri in questa app</button>` : PT_APPS[p.app] ? `<a class="btn" href="${esc(PT_APPS[p.app].url + '?portale=' + encodeURIComponent(pid))}" target="_blank" rel="noopener">Apri in ${esc(PT_APPS[p.app].nome)}</a>` : ''}</div>
       <h3>Report</h3><div id="ptrep" class="list"><p class="muted">Carico…</p></div></div>`;
     try {
       const files = (await PT.filesP(pid)).files; const rep = files.filter(f => f.name.startsWith('report/')).sort((a, b) => b.uploaded.localeCompare(a.uploaded)); const g = files.find(f => f.name === 'dati/' + (p.gpkg || ''));
